@@ -2,24 +2,19 @@
 -- RYZOMA AGRO — Schema Módulo Fertirrigación (Versión Showcase / Portfolio)
 -- =============================================================================
 -- Schema focalizado en el Módulo de Fertirrigación de Ryzoma Agro.
--- Incluye únicamente las tablas relevantes al flujo de:
---   planificación → registro → distribución hidráulica → reporte externo.
---
--- El sistema completo contiene módulos adicionales (cosechas, riego, labores,
--- georreferenciación, RRHH) que no forman parte de este showcase.
 --
 -- Tablas incluidas (12):
 --   empresas, usuarios                          → Multi-tenancy y autenticación
 --   predios, sectores, cultivos                 → Topología de la red agrícola
---   fertilizantes                               → Catálogo con densidad y % NPK
+--   fertilizantes                               → Catálogo (Soporte JSON para micros)
 --   config_distribucion_riego                   → Grafo de adyacencia hidráulica
---   fertilizaciones_cabezal                     → Registro de entrada (cabezal)
---   fertilizaciones_reales                      → Distribución calculada por sector
+--   fertilizaciones_cabezal                     → Registro de inyección (origen)
+--   fertilizaciones_reales                      → Distribución calculada (destino)
 --   programas_fertilizacion, programas_detalles → Planificación nutricional
---   reportes_tokens                             → Links efímeros para asesores externos
+--   reportes_tokens                             → Links efímeros para terceros
 --
 -- Tecnología: MySQL 8.0 | Motor: InnoDB | Charset: utf8mb4_unicode_ci
--- Autor: Cristian Manzano Ayala
+-- Autor: Cristian Antonio Manzano Ayala
 -- =============================================================================
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
@@ -43,12 +38,12 @@ DROP TABLE IF EXISTS `empresas`;
 CREATE TABLE `empresas` (
   `id` int NOT NULL AUTO_INCREMENT COMMENT 'PK: ID de la Empresa',
   `nombre` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
-  `mes_inicio_temporada` int NOT NULL DEFAULT '7' COMMENT 'Mes (1-12) en que inicia la temporada (para reportes)',
+  `mes_inicio_temporada` int NOT NULL DEFAULT '7' COMMENT 'Mes (1-12) inicio temporada',
   `fecha_creacion` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `estado_suscripcion` enum('activa','inactiva','prueba') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'prueba',
   `activo` tinyint(1) NOT NULL DEFAULT '1',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Tabla maestra de clientes (empresas) del SaaS';
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Tabla maestra multi-tenant';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -61,23 +56,18 @@ DROP TABLE IF EXISTS `usuarios`;
 CREATE TABLE `usuarios` (
   `id` int NOT NULL AUTO_INCREMENT COMMENT 'PK: ID del Usuario',
   `empresa_id` int NOT NULL COMMENT 'FK a empresas.id',
-  `trabajador_id` int DEFAULT NULL COMMENT 'FK a trabajadores.id. NULO para usuarios Admin.',
-  `username` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Nombre de usuario para el login (GLOBALMENTE ÚNICO)',
-  `password_hash` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Hash bcrypt de la contraseña (nunca se almacena en texto plano)',
-  `rol_id` int NOT NULL COMMENT 'FK a roles.id',
-  `activo` tinyint(1) DEFAULT '1' COMMENT '1 = Usuario puede iniciar sesión, 0 = Deshabilitado',
+  `trabajador_id` int DEFAULT NULL,
+  `username` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `password_hash` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `rol_id` int NOT NULL,
+  `activo` tinyint(1) DEFAULT '1',
   `fecha_creacion` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `ultimo_login` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `username` (`username`) COMMENT 'Username debe ser único en toda la plataforma',
-  KEY `idx_usuario_rol` (`rol_id`),
-  KEY `idx_usuario_activo` (`activo`),
-  KEY `trabajador_id` (`trabajador_id`),
+  UNIQUE KEY `username` (`username`),
   KEY `fk_usuario_empresa` (`empresa_id`),
-  CONSTRAINT `fk_usuario_empresa` FOREIGN KEY (`empresa_id`) REFERENCES `empresas` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_usuario_rol` FOREIGN KEY (`rol_id`) REFERENCES `roles` (`id`) ON UPDATE CASCADE,
-  CONSTRAINT `fk_usuario_trabajador` FOREIGN KEY (`trabajador_id`) REFERENCES `trabajadores` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Credenciales y roles de los usuarios del sistema';
+  CONSTRAINT `fk_usuario_empresa` FOREIGN KEY (`empresa_id`) REFERENCES `empresas` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -89,9 +79,9 @@ DROP TABLE IF EXISTS `cultivos`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `cultivos` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `empresa_id` int NOT NULL COMMENT 'Multi-tenancy',
-  `nombre` varchar(100) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Ej: Palto, Cítrico, Nogal',
-  `variedad` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Ej: Hass, Edranol, Serr',
+  `empresa_id` int NOT NULL,
+  `nombre` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
+  `variedad` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `activo` tinyint(1) NOT NULL DEFAULT '1',
   PRIMARY KEY (`id`),
   KEY `fk_cultivo_empresa` (`empresa_id`),
@@ -107,8 +97,8 @@ DROP TABLE IF EXISTS `predios`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `predios` (
-  `id` int NOT NULL AUTO_INCREMENT COMMENT 'PK: ID del Predio',
-  `empresa_id` int NOT NULL COMMENT 'FK a empresas.id',
+  `id` int NOT NULL AUTO_INCREMENT,
+  `empresa_id` int NOT NULL,
   `nombre` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `cultivo_id` int DEFAULT NULL,
   `tipo_superficie` enum('cultivo','cabezal_virtual','infraestructura') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'cultivo',
@@ -119,15 +109,13 @@ CREATE TABLE `predios` (
   `tipo_emisor` varchar(15) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `caudal_lt_hora` decimal(10,2) DEFAULT NULL,
   `activo` tinyint(1) NOT NULL DEFAULT '1',
-  `umbral_bajo` int DEFAULT '75' COMMENT 'Bajo esto es Crítico (Rojo)',
-  `umbral_optimo_min` int DEFAULT '90' COMMENT 'Desde aquí es Óptimo (Verde)',
-  `umbral_optimo_max` int DEFAULT '110' COMMENT 'Hasta aquí es Óptimo (Verde)',
-  `umbral_exceso` int DEFAULT '130' COMMENT 'Sobre esto es Exceso Crítico (Azul)',
+  `umbral_bajo` int DEFAULT '75',
+  `umbral_optimo_min` int DEFAULT '90',
+  `umbral_optimo_max` int DEFAULT '110',
+  `umbral_exceso` int DEFAULT '130',
   PRIMARY KEY (`id`),
   KEY `fk_predio_empresa` (`empresa_id`),
-  KEY `fk_predio_cultivo_idx` (`cultivo_id`),
-  CONSTRAINT `fk_predio_cultivo` FOREIGN KEY (`cultivo_id`) REFERENCES `cultivos` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
-  CONSTRAINT `fk_predio_empresa` FOREIGN KEY (`empresa_id`) REFERENCES `empresas` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+  CONSTRAINT `fk_predio_empresa` FOREIGN KEY (`empresa_id`) REFERENCES `empresas` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -139,21 +127,19 @@ DROP TABLE IF EXISTS `sectores`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `sectores` (
-  `id` int NOT NULL AUTO_INCREMENT COMMENT 'PK: ID del Sector',
-  `empresa_id` int NOT NULL COMMENT 'FK a empresas.id',
-  `predio_id` int NOT NULL COMMENT 'FK a predios.id',
+  `id` int NOT NULL AUTO_INCREMENT,
+  `empresa_id` int NOT NULL,
+  `predio_id` int NOT NULL,
   `nombre` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
   `unidad` varchar(5) COLLATE utf8mb4_general_ci NOT NULL,
   `superficie` decimal(10,2) NOT NULL,
   `cantidad_plantas` int NOT NULL,
   `activo` tinyint(1) NOT NULL DEFAULT '1',
-  `entidad_legal_id` int DEFAULT NULL COMMENT 'Dueño legal de la fruta de este sector (Opcional)',
+  `entidad_legal_id` int DEFAULT NULL,
   PRIMARY KEY (`id`),
-  KEY `fk_sectores_predios` (`predio_id`),
   KEY `fk_sector_empresa` (`empresa_id`),
-  KEY `fk_sector_entidad` (`entidad_legal_id`),
-  CONSTRAINT `fk_sector_empresa` FOREIGN KEY (`empresa_id`) REFERENCES `empresas` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_sector_entidad` FOREIGN KEY (`entidad_legal_id`) REFERENCES `entidades_legales` (`id`) ON DELETE SET NULL,
+  KEY `fk_sector_predio` (`predio_id`),
+  CONSTRAINT `fk_sector_empresa` FOREIGN KEY (`empresa_id`) REFERENCES `empresas` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_sector_predio` FOREIGN KEY (`predio_id`) REFERENCES `predios` (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -175,8 +161,7 @@ CREATE TABLE `fertilizantes` (
   `porcentaje_n` decimal(5,2) DEFAULT '0.00',
   `porcentaje_p` decimal(5,2) DEFAULT '0.00',
   `porcentaje_k` decimal(5,2) DEFAULT '0.00',
-  `componente_extra_nombre` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `componente_extra_porcentaje` decimal(5,2) DEFAULT '0.00',
+  `micronutrientes` json DEFAULT NULL COMMENT 'Payload dinámico. Ej: {"Zn": 2.5, "Acidos_Humicos": 15.0}',
   `activo` tinyint(1) DEFAULT '1',
   PRIMARY KEY (`id`),
   KEY `empresa_id` (`empresa_id`),
@@ -252,7 +237,7 @@ CREATE TABLE `fertilizaciones_reales` (
   `unidades_n` decimal(10,2) DEFAULT '0.00',
   `unidades_p` decimal(10,2) DEFAULT '0.00',
   `unidades_k` decimal(10,2) DEFAULT '0.00',
-  `unidades_extra` decimal(10,2) DEFAULT '0.00',
+  `unidades_micronutrientes` json DEFAULT NULL COMMENT 'Calculado al registrar. Ej: {"Zn": 0.45}',
   PRIMARY KEY (`id`),
   KEY `fertilizacion_cabezal_id` (`fertilizacion_cabezal_id`),
   KEY `predio_destino_id` (`predio_destino_id`),
@@ -271,20 +256,16 @@ DROP TABLE IF EXISTS `programas_fertilizacion`;
 CREATE TABLE `programas_fertilizacion` (
   `id` int NOT NULL AUTO_INCREMENT,
   `empresa_id` int NOT NULL,
-  `nombre` varchar(150) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Ej: Matriz Paltos 2025',
-  `temporada` varchar(20) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Ej: 2025-2026',
-  `cultivo_id` int DEFAULT NULL COMMENT 'Si se llena, aplica a todos los predios de este cultivo',
-  `predio_id` int DEFAULT NULL COMMENT 'Si se llena, aplica SOLO a este predio (Excepción/Ajuste)',
+  `nombre` varchar(150) COLLATE utf8mb4_general_ci NOT NULL,
+  `temporada` varchar(20) COLLATE utf8mb4_general_ci NOT NULL,
+  `cultivo_id` int DEFAULT NULL,
+  `predio_id` int DEFAULT NULL,
   `tipo` enum('base','ajuste') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'base',
   `activo` tinyint(1) NOT NULL DEFAULT '1',
   `fecha_creacion` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `fk_prog_empresa` (`empresa_id`),
-  KEY `fk_prog_cultivo` (`cultivo_id`),
-  KEY `fk_prog_predio` (`predio_id`),
-  CONSTRAINT `fk_prog_cultivo` FOREIGN KEY (`cultivo_id`) REFERENCES `cultivos` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_prog_empresa` FOREIGN KEY (`empresa_id`) REFERENCES `empresas` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_prog_predio` FOREIGN KEY (`predio_id`) REFERENCES `predios` (`id`) ON DELETE CASCADE
+  CONSTRAINT `fk_prog_empresa` FOREIGN KEY (`empresa_id`) REFERENCES `empresas` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -298,11 +279,11 @@ DROP TABLE IF EXISTS `programas_detalles`;
 CREATE TABLE `programas_detalles` (
   `id` int NOT NULL AUTO_INCREMENT,
   `programa_id` int NOT NULL,
-  `mes` int NOT NULL COMMENT '1=Enero, 12=Diciembre',
+  `mes` int NOT NULL,
   `meta_n` decimal(10,2) DEFAULT '0.00',
   `meta_p` decimal(10,2) DEFAULT '0.00',
   `meta_k` decimal(10,2) DEFAULT '0.00',
-  `meta_extra_nombre` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Ej: Zinc, Húmico',
+  `meta_extra_nombre` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `meta_extra_cantidad` decimal(10,2) DEFAULT '0.00',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_prog_mes` (`programa_id`,`mes`),
@@ -321,11 +302,11 @@ CREATE TABLE `reportes_tokens` (
   `id` int NOT NULL AUTO_INCREMENT,
   `empresa_id` int NOT NULL,
   `usuario_creador_id` int NOT NULL,
-  `token` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Hash único de acceso',
+  `token` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
   `tipo_reporte` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'nutricional_temporada',
   `params` text COLLATE utf8mb4_unicode_ci,
   `fecha_creacion` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `fecha_expiracion` datetime DEFAULT NULL COMMENT 'NULL = Indefinido',
+  `fecha_expiracion` datetime DEFAULT NULL,
   `activo` tinyint(1) NOT NULL DEFAULT '1',
   PRIMARY KEY (`id`),
   UNIQUE KEY `idx_token` (`token`),
@@ -333,7 +314,6 @@ CREATE TABLE `reportes_tokens` (
   CONSTRAINT `fk_token_empresa` FOREIGN KEY (`empresa_id`) REFERENCES `empresas` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-
 
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
