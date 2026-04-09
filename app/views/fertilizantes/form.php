@@ -34,44 +34,41 @@
                                     </option>
                                 <?php endforeach; ?>
                                 </select>
-                                </div>
-                                <div class="col-md-6">
-                                    <label for="tipo_unidad" class="form-label">Unidad de Medida</label>
-                                    <div class="btn-group w-100" role="group">
-                                        <!-- Añadimos evento onclick para manejar la UI de densidad -->
-                                        <input type="radio" class="btn-check" name="tipo_unidad" id="unidad_kg" value="kg" 
-                                            onclick="toggleDensidad(false)"
-                                            <?php echo ($data['producto']->tipo_unidad == 'kg') ? 'checked' : ''; ?>>
-                                        <label class="btn btn-outline-primary" for="unidad_kg">Kilos (kg)</label>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="tipo_unidad" class="form-label">Unidad de Medida</label>
+                                <div class="btn-group w-100" role="group">
+                                    <input type="radio" class="btn-check" name="tipo_unidad" id="unidad_kg" value="kg" 
+                                        onclick="toggleDensidad(false)"
+                                        <?php echo ($data['producto']->tipo_unidad == 'kg') ? 'checked' : ''; ?>>
+                                    <label class="btn btn-outline-primary" for="unidad_kg">Kilos (kg)</label>
 
-                                        <input type="radio" class="btn-check" name="tipo_unidad" id="unidad_lt" value="lt" 
-                                            onclick="toggleDensidad(true)"
-                                            <?php echo ($data['producto']->tipo_unidad == 'lt') ? 'checked' : ''; ?>>
-                                        <label class="btn btn-outline-primary" for="unidad_lt">Litros (Lt)</label>
-                                    </div>
+                                    <input type="radio" class="btn-check" name="tipo_unidad" id="unidad_lt" value="lt" 
+                                        onclick="toggleDensidad(true)"
+                                        <?php echo ($data['producto']->tipo_unidad == 'lt') ? 'checked' : ''; ?>>
+                                    <label class="btn btn-outline-primary" for="unidad_lt">Litros (Lt)</label>
                                 </div>
                             </div>
+                        </div>
 
-                            <!-- CAMPO DE DENSIDAD (Visible solo si es Litros) -->
-                            <div id="bloque_densidad" class="mb-4 bg-info bg-opacity-10 p-3 rounded border border-info" style="display: none;">
-                                <label for="densidad" class="form-label fw-bold text-primary-dark-green">
-                                    <i class="bi bi-droplet-half me-2"></i>Densidad (Gravedad Específica)
-                                </label>
-                                <div class="input-group">
-                                    <input type="number" step="0.001" class="form-control" id="densidad" name="densidad" 
-                                        value="<?php echo ($data['producto']->densidad > 0) ? $data['producto']->densidad : '1.000'; ?>" 
-                                        placeholder="Ej: 1.25">
-                                    <span class="input-group-text">kg/lt</span>
-                                </div>
-                                <div class="form-text text-muted">
-                                    Necesario para calcular los kilos reales de nutrientes aplicados. (1 Lt * Densidad = Kg Reales)
-                                </div>
+                        <!-- CAMPO DE DENSIDAD -->
+                        <div id="bloque_densidad" class="mb-4 bg-info bg-opacity-10 p-3 rounded border border-info" style="display: none;">
+                            <label for="densidad" class="form-label fw-bold text-primary-dark-green">
+                                <i class="bi bi-droplet-half me-2"></i>Densidad (Gravedad Específica)
+                            </label>
+                            <div class="input-group">
+                                <input type="number" step="0.001" class="form-control" id="densidad" name="densidad" 
+                                    value="<?php echo ($data['producto']->densidad > 0) ? $data['producto']->densidad : '1.000'; ?>" 
+                                    placeholder="Ej: 1.25">
+                                <span class="input-group-text">kg/lt</span>
                             </div>
+                            <div class="form-text text-muted">1 Lt × Densidad = Kg reales de producto.</div>
+                        </div>
 
                         <hr class="my-4 text-muted opacity-25">
 
-                        <!-- Composición Química -->
-                        <h6 class="text-primary-dark-green fw-bold mb-3"><i class="bi bi-eyedropper me-2"></i>Composición (Dejar en 0 si no aplica)</h6>
+                        <!-- Composición NPK -->
+                        <h6 class="text-primary-dark-green fw-bold mb-3"><i class="bi bi-eyedropper me-2"></i>Composición NPK (0 si no aplica)</h6>
                         
                         <div class="row g-3 mb-4">
                             <div class="col-4">
@@ -97,21 +94,43 @@
                             </div>
                         </div>
 
-                        <!-- Componente Extra -->
-                        <div class="bg-light p-3 rounded border">
-                            <label class="form-label fw-bold small text-uppercase text-muted">Componente Adicional (Opcional)</label>
-                            <div class="row g-2">
-                                <div class="col-7">
-                                    <input type="text" class="form-control form-control-sm" name="componente_extra_nombre" 
-                                           value="<?php echo htmlspecialchars($data['producto']->componente_extra_nombre); ?>" placeholder="Nombre (Ej: Ác. Húmico)">
-                                </div>
-                                <div class="col-5">
-                                    <div class="input-group input-group-sm">
-                                        <input type="number" step="0.01" class="form-control" name="componente_extra_porcentaje" 
-                                               value="<?php echo $data['producto']->componente_extra_porcentaje; ?>" placeholder="0">
-                                        <span class="input-group-text">%</span>
+                        <hr class="my-4 text-muted opacity-25">
+
+                        <!-- Micronutrientes dinámicos -->
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="text-primary-dark-green fw-bold mb-0">
+                                    <i class="bi bi-plus-square-dotted me-2"></i>Micronutrientes / Componentes Extra
+                                </h6>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="agregarMicro()">
+                                    <i class="bi bi-plus-lg me-1"></i> Añadir
+                                </button>
+                            </div>
+                            <div class="form-text text-muted mb-2">Ej: Zinc, Boro, Azufre, Ácidos Húmicos. Dejar vacío si no aplica.</div>
+
+                            <div id="contenedor_micros">
+                                <?php if (!empty($data['producto']->micronutrientes_array)): ?>
+                                    <?php foreach ($data['producto']->micronutrientes_array as $nombre => $porcentaje): ?>
+                                    <div class="row g-2 mb-2 fila-micro">
+                                        <div class="col-7">
+                                            <input type="text" class="form-control form-control-sm" name="micro_nombre[]" 
+                                                   value="<?php echo htmlspecialchars($nombre); ?>" placeholder="Nombre (Ej: Zinc)">
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="input-group input-group-sm">
+                                                <input type="number" step="0.01" min="0.01" class="form-control" name="micro_porcentaje[]" 
+                                                       value="<?php echo $porcentaje; ?>" placeholder="0">
+                                                <span class="input-group-text">%</span>
+                                            </div>
+                                        </div>
+                                        <div class="col-1">
+                                            <button type="button" class="btn btn-sm btn-outline-danger border-0 w-100" onclick="eliminarMicro(this)" title="Eliminar">
+                                                <i class="bi bi-x-lg"></i>
+                                            </button>
+                                        </div>
                                     </div>
-                                </div>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
                             </div>
                         </div>
 
@@ -126,15 +145,39 @@
         </div>
     </div>
 </div>
+
 <script>
 function toggleDensidad(show) {
-    const bloque = document.getElementById('bloque_densidad');
-    bloque.style.display = show ? 'block' : 'none';
+    document.getElementById('bloque_densidad').style.display = show ? 'block' : 'none';
+}
+document.addEventListener('DOMContentLoaded', function() {
+    toggleDensidad(document.getElementById('unidad_lt').checked);
+});
+
+function agregarMicro() {
+    const contenedor = document.getElementById('contenedor_micros');
+    const fila = document.createElement('div');
+    fila.className = 'row g-2 mb-2 fila-micro';
+    fila.innerHTML = `
+        <div class="col-7">
+            <input type="text" class="form-control form-control-sm" name="micro_nombre[]" placeholder="Nombre (Ej: Zinc)">
+        </div>
+        <div class="col-4">
+            <div class="input-group input-group-sm">
+                <input type="number" step="0.01" min="0.01" class="form-control" name="micro_porcentaje[]" placeholder="0">
+                <span class="input-group-text">%</span>
+            </div>
+        </div>
+        <div class="col-1">
+            <button type="button" class="btn btn-sm btn-outline-danger border-0 w-100" onclick="eliminarMicro(this)" title="Eliminar">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>`;
+    contenedor.appendChild(fila);
+    fila.querySelector('input[name="micro_nombre[]"]').focus();
 }
 
-// Inicializar estado al cargar
-document.addEventListener('DOMContentLoaded', function() {
-    const isLitros = document.getElementById('unidad_lt').checked;
-    toggleDensidad(isLitros);
-});
+function eliminarMicro(btn) {
+    btn.closest('.fila-micro').remove();
+}
 </script>

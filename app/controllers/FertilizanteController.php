@@ -8,7 +8,7 @@ class FertilizanteController extends Controller {
 
     public function __construct() {
         parent::__construct();
-        $this->protect(['Admin']); // Solo Admin configura productos
+        $this->protect(['Admin']);
         $this->fertilizanteModel = $this->model('FertilizanteModel');
     }
 
@@ -32,9 +32,9 @@ class FertilizanteController extends Controller {
                 'nombre_comercial' => '',
                 'tipo_producto' => 'fertilizante',
                 'tipo_unidad' => 'kg',
-                'densidad' => '1.000', // Valor por defecto
+                'densidad' => '1.000',
                 'porcentaje_n' => '', 'porcentaje_p' => '', 'porcentaje_k' => '',
-                'componente_extra_nombre' => '', 'componente_extra_porcentaje' => ''
+                'micronutrientes_array' => [] // Array vacío para vista nueva
             ],
             'breadcrumbs' => [
                 ['label' => 'Catálogo', 'url' => URL_ROOT . '/fertilizante'],
@@ -59,20 +59,34 @@ class FertilizanteController extends Controller {
     public function guardar() {
         if ($_SERVER['REQUEST_METHOD'] != 'POST') $this->redirect('fertilizante/index');
         
-        $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_STRING);
+        $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS);
         $id = $_POST['id'] ?? null;
         
+        // Construir JSON de micronutrientes desde los arrays del formulario dinámico
+        $micronutrientes = null;
+        $nombres  = $_POST['micro_nombre']     ?? [];
+        $porcentajes = $_POST['micro_porcentaje'] ?? [];
+        $micros = [];
+        foreach ($nombres as $i => $nombre) {
+            $nombre = trim($nombre);
+            $porc   = isset($porcentajes[$i]) ? (float)$porcentajes[$i] : 0;
+            if ($nombre !== '' && $porc > 0) {
+                $micros[$nombre] = $porc;
+            }
+        }
+        if (!empty($micros)) {
+            $micronutrientes = json_encode($micros, JSON_UNESCAPED_UNICODE);
+        }
+
         $datos = [
-            'nombre_comercial' => trim($_POST['nombre_comercial']),
-            'tipo_producto' => $_POST['tipo_producto'],
-            'tipo_unidad' => $_POST['tipo_unidad'],
-            'densidad' => ($_POST['tipo_unidad'] === 'lt' && !empty($_POST['densidad'])) ? $_POST['densidad'] : 1.000,
-            
-            'porcentaje_n' => $_POST['porcentaje_n'],
-            'porcentaje_p' => $_POST['porcentaje_p'],
-            'porcentaje_k' => $_POST['porcentaje_k'],
-            'componente_extra_nombre' => trim($_POST['componente_extra_nombre']),
-            'componente_extra_porcentaje' => $_POST['componente_extra_porcentaje']
+            'nombre_comercial'  => trim($_POST['nombre_comercial']),
+            'tipo_producto'     => $_POST['tipo_producto'],
+            'tipo_unidad'       => $_POST['tipo_unidad'],
+            'densidad'          => ($_POST['tipo_unidad'] === 'lt' && !empty($_POST['densidad'])) ? $_POST['densidad'] : 1.000,
+            'porcentaje_n'      => $_POST['porcentaje_n'],
+            'porcentaje_p'      => $_POST['porcentaje_p'],
+            'porcentaje_k'      => $_POST['porcentaje_k'],
+            'micronutrientes'   => $micronutrientes,
         ];
 
         if (empty($datos['nombre_comercial'])) {

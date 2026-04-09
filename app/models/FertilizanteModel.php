@@ -1,7 +1,7 @@
 <?php
 /**
  * Modelo para el Catálogo de Fertilizantes e Insumos
- * (Flexible NPK + Extra)
+ * (NPK + Micronutrientes JSON)
  */
 class FertilizanteModel {
     private $db;
@@ -15,10 +15,6 @@ class FertilizanteModel {
     // --- CRUD Básico ---
 
     public function obtenerTodos($limit = null, $offset = 0) {
-        /*
-         * TODO (Arquitectura): Soporte inicial para paginación. 
-         * Crucial para escalar cuando el catálogo de insumos crezca a cientos de registros.
-         */
         $sql = "SELECT * FROM fertilizantes 
                 WHERE empresa_id = :empresa_id 
                 ORDER BY nombre_comercial ASC";
@@ -44,23 +40,31 @@ class FertilizanteModel {
         $this->db->bind(':empresa_id', $this->empresa_id);
         return $this->db->resultSet();
     }
+
     public function obtenerPorId($id) {
         $sql = "SELECT * FROM fertilizantes WHERE id = :id AND empresa_id = :empresa_id";
         $this->db->query($sql);
         $this->db->bind(':id', $id);
         $this->db->bind(':empresa_id', $this->empresa_id);
-        return $this->db->single();
+        $row = $this->db->single();
+        // Decodificar micronutrientes para que el controlador reciba un array PHP
+        if ($row && !empty($row->micronutrientes)) {
+            $row->micronutrientes_array = json_decode($row->micronutrientes, true) ?? [];
+        } else {
+            $row->micronutrientes_array = [];
+        }
+        return $row;
     }
 
     public function crear($datos) {
         $sql = "INSERT INTO fertilizantes (
                     empresa_id, nombre_comercial, tipo_producto, tipo_unidad, densidad,
                     porcentaje_n, porcentaje_p, porcentaje_k,
-                    componente_extra_nombre, componente_extra_porcentaje, activo
+                    micronutrientes, activo
                 ) VALUES (
                     :empresa, :nombre, :tipo, :unidad, :densidad,
                     :n, :p, :k,
-                    :extra_nom, :extra_porc, 1
+                    :micros, 1
                 )";
         
         $this->db->query($sql);
@@ -77,8 +81,7 @@ class FertilizanteModel {
                     porcentaje_n = :n,
                     porcentaje_p = :p,
                     porcentaje_k = :k,
-                    componente_extra_nombre = :extra_nom,
-                    componente_extra_porcentaje = :extra_porc
+                    micronutrientes = :micros
                 WHERE id = :id AND empresa_id = :empresa";
         
         $this->db->query($sql);
@@ -95,22 +98,17 @@ class FertilizanteModel {
         return $this->db->execute();
     }
 
-    // Helper para bindear parámetros repetitivos
     private function bindParams($datos) {
         $this->db->bind(':empresa', $this->empresa_id);
         $this->db->bind(':nombre', $datos['nombre_comercial']);
         $this->db->bind(':tipo', $datos['tipo_producto']);
         $this->db->bind(':unidad', $datos['tipo_unidad']);
         $this->db->bind(':densidad', !empty($datos['densidad']) ? $datos['densidad'] : 1.00);
-        
-        // Manejo de nulos/ceros para NPK
         $this->db->bind(':n', !empty($datos['porcentaje_n']) ? $datos['porcentaje_n'] : 0.00);
         $this->db->bind(':p', !empty($datos['porcentaje_p']) ? $datos['porcentaje_p'] : 0.00);
         $this->db->bind(':k', !empty($datos['porcentaje_k']) ? $datos['porcentaje_k'] : 0.00);
-        
-        // Manejo de Extra
-        $this->db->bind(':extra_nom', !empty($datos['componente_extra_nombre']) ? $datos['componente_extra_nombre'] : null);
-        $this->db->bind(':extra_porc', !empty($datos['componente_extra_porcentaje']) ? $datos['componente_extra_porcentaje'] : 0.00);
+        // micronutrientes llega ya como JSON string desde el controlador (o null)
+        $this->db->bind(':micros', $datos['micronutrientes'] ?? null);
     }
 }
 ?>
