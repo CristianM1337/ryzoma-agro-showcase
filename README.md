@@ -125,6 +125,7 @@ public function getAll(): array
 
 ## 📁 Contenido del Repositorio
 
+```
 ryzoma-agro-showcase/
 ├── README.md
 ├── app/
@@ -146,6 +147,7 @@ ryzoma-agro-showcase/
 │           └── index.php
 └── database/
     └── schema_sanitized.sql               # Schema focalizado (12 tablas, sanitizado)
+```
 
 El código fuente del sistema (controladores, modelos, vistas, servicios) se mantiene en repositorio privado. Este showcase expone la arquitectura, el modelo de datos y la lógica de negocio de forma ilustrativa.
 
