@@ -12,49 +12,72 @@ class FertilizacionService {
 
     // --- CREACIÓN ---
     public function registrarAplicacion($datos) {
-        // 1. Guardar Cabezal
-        $cabezalId = $this->crearRegistroCabezal($datos);
-        if (!$cabezalId) return false;
+        try {
+            // Iniciamos la transacción (Ajusta 'beginTransaction' según la API de tu clase Database)
+            $this->db->beginTransaction(); 
 
-        // 2. Procesar Distribución
-        $this->procesarDistribucion($cabezalId, $datos);
+            // 1. Guardar Cabezal
+            $cabezalId = $this->crearRegistroCabezal($datos);
+            if (!$cabezalId) {
+                $this->db->rollBack();
+                return false;
+            }
 
-        return true;
+            // 2. Procesar Distribución
+            $this->procesarDistribucion($cabezalId, $datos);
+
+            $this->db->commit();
+            return true;
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            // Re-lanzar la excepción para que el Controlador la atrape y muestre el mensaje flash
+            throw $e; 
+        }
     }
 
     // --- ACTUALIZACIÓN ---
     public function actualizarAplicacion($id, $datos) {
-        // 1. Actualizar Cabezal
-        $sql = "UPDATE fertilizaciones_cabezal SET 
-                    predio_cabezal_id = :predio,
-                    fertilizante_id = :fert,
-                    fecha = :fecha,
-                    cantidad_aplicada = :cant,
-                    usuario_id = :user
-                WHERE id = :id AND empresa_id = :empresa";
-        
-        $this->db->query($sql);
-        $this->db->bind(':id', $id);
-        $this->db->bind(':empresa', $this->empresa_id);
-        $this->db->bind(':predio', $datos['predio_cabezal_id']);
-        $this->db->bind(':fert', $datos['fertilizante_id']);
-        $this->db->bind(':fecha', $datos['fecha']);
-        $this->db->bind(':cant', $datos['cantidad_aplicada']);
-        $this->db->bind(':user', $datos['usuario_id']); // Actualizamos quién editó (opcional)
-        
-        if (!$this->db->execute()) return false;
+        try {
+            $this->db->beginTransaction();
 
-        // 2. Recalcular Distribución (Estrategia: Borrar y Recrear)
-        // Borramos los registros 'reales' antiguos asociados a este cabezal
-        $this->db->query("DELETE FROM fertilizaciones_reales WHERE fertilizacion_cabezal_id = :id AND empresa_id = :empresa");
-        $this->db->bind(':id', $id);
-        $this->db->bind(':empresa', $this->empresa_id);
-        $this->db->execute();
+            // 1. Actualizar Cabezal
+            $sql = "UPDATE fertilizaciones_cabezal SET 
+                        predio_cabezal_id = :predio,
+                        fertilizante_id = :fert,
+                        fecha = :fecha,
+                        cantidad_aplicada = :cant,
+                        usuario_id = :user
+                    WHERE id = :id AND empresa_id = :empresa";
+            
+            $this->db->query($sql);
+            $this->db->bind(':id', $id);
+            $this->db->bind(':empresa', $this->empresa_id);
+            $this->db->bind(':predio', $datos['predio_cabezal_id']);
+            $this->db->bind(':fert', $datos['fertilizante_id']);
+            $this->db->bind(':fecha', $datos['fecha']);
+            $this->db->bind(':cant', $datos['cantidad_aplicada']);
+            $this->db->bind(':user', $datos['usuario_id']); 
+            
+            if (!$this->db->execute()) {
+                $this->db->rollBack();
+                return false;
+            }
 
-        // 3. Re-crear Distribución con los nuevos datos
-        $this->procesarDistribucion($id, $datos);
+            // 2. Recalcular Distribución (Borrar y Recrear)
+            $this->db->query("DELETE FROM fertilizaciones_reales WHERE fertilizacion_cabezal_id = :id AND empresa_id = :empresa");
+            $this->db->bind(':id', $id);
+            $this->db->bind(':empresa', $this->empresa_id);
+            $this->db->execute();
 
-        return true;
+            // 3. Re-crear Distribución
+            $this->procesarDistribucion($id, $datos);
+
+            $this->db->commit();
+            return true;
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
     }
 
     // --- HELPER DE PROCESAMIENTO (Reutilizable) ---

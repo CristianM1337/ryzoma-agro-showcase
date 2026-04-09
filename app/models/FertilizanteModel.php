@@ -14,12 +14,27 @@ class FertilizanteModel {
 
     // --- CRUD Básico ---
 
-    public function obtenerTodos() {
+    public function obtenerTodos($limit = null, $offset = 0) {
+        /*
+         * TODO (Arquitectura): Soporte inicial para paginación. 
+         * Crucial para escalar cuando el catálogo de insumos crezca a cientos de registros.
+         */
         $sql = "SELECT * FROM fertilizantes 
                 WHERE empresa_id = :empresa_id 
                 ORDER BY nombre_comercial ASC";
+        
+        if ($limit !== null) {
+            $sql .= " LIMIT :limit OFFSET :offset";
+        }
+
         $this->db->query($sql);
         $this->db->bind(':empresa_id', $this->empresa_id);
+        
+        if ($limit !== null) {
+            $this->db->bind(':limit', (int)$limit);
+            $this->db->bind(':offset', (int)$offset);
+        }
+
         return $this->db->resultSet();
     }
 
