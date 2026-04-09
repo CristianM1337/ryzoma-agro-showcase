@@ -1,7 +1,6 @@
 <?php
 /**
  * Controlador Admin para Fertilizantes (CRUD)
- * Arquitectura v3.2 - Soporte para Densidad
  */
 class FertilizanteController extends Controller {
     
@@ -67,7 +66,6 @@ class FertilizanteController extends Controller {
             'nombre_comercial' => trim($_POST['nombre_comercial']),
             'tipo_producto' => $_POST['tipo_producto'],
             'tipo_unidad' => $_POST['tipo_unidad'],
-            // NUEVO: Capturamos densidad. Si es Kg o viene vacía, forzamos 1.0
             'densidad' => ($_POST['tipo_unidad'] === 'lt' && !empty($_POST['densidad'])) ? $_POST['densidad'] : 1.000,
             
             'porcentaje_n' => $_POST['porcentaje_n'],

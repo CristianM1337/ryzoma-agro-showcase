@@ -1,6 +1,5 @@
 <?php
-// app/core/FertilizacionService.php (Versión 3.7 - Edición y Validación)
-
+// app/core/FertilizacionService.php 
 class FertilizacionService {
     
     private $db;
@@ -11,7 +10,7 @@ class FertilizacionService {
         $this->empresa_id = $empresa_id;
     }
 
-    // --- CREACIÓN (Mantenemos igual, pero refactorizado internamente si se desea) ---
+    // --- CREACIÓN ---
     public function registrarAplicacion($datos) {
         // 1. Guardar Cabezal
         $cabezalId = $this->crearRegistroCabezal($datos);
@@ -23,7 +22,7 @@ class FertilizacionService {
         return true;
     }
 
-    // --- NUEVO: ACTUALIZACIÓN ---
+    // --- ACTUALIZACIÓN ---
     public function actualizarAplicacion($id, $datos) {
         // 1. Actualizar Cabezal
         $sql = "UPDATE fertilizaciones_cabezal SET 
@@ -58,7 +57,7 @@ class FertilizacionService {
         return true;
     }
 
-    // --- NUEVO: HELPER DE PROCESAMIENTO (Reutilizable) ---
+    // --- HELPER DE PROCESAMIENTO (Reutilizable) ---
     private function procesarDistribucion($cabezalId, $datos) {
         // Obtener info del producto
         $infoFert = $this->obtenerInfoFertilizante($datos['fertilizante_id']);
@@ -95,7 +94,7 @@ class FertilizacionService {
         }
     }
 
-    // --- NUEVO: OBTENER POR ID (Para editar) ---
+    // --- OBTENER POR ID (Para editar) ---
     public function obtenerCabezalPorId($id) {
         $sql = "SELECT * FROM fertilizaciones_cabezal WHERE id = :id AND empresa_id = :empresa";
         $this->db->query($sql);
@@ -104,7 +103,7 @@ class FertilizacionService {
         return $this->db->single();
     }
 
-    // --- NUEVO: VERIFICAR DUPLICADOS ---
+    // --- VERIFICAR DUPLICADOS ---
     public function verificarDuplicado($fecha, $cabezalId, $fertilizanteId, $excludeId = null) {
         $sql = "SELECT id, cantidad_aplicada, usuario_id FROM fertilizaciones_cabezal 
                 WHERE fecha = :fecha 
@@ -129,7 +128,7 @@ class FertilizacionService {
     }
 
     // --- MÉTODOS DE LECTURA (HISTORIAL) ---
-// --- MEJORA: Obtener Historial con Ordenamiento Dinámico ---
+// --- Obtener Historial con Ordenamiento Dinámico ---
 public function obtenerHistorialCabezal($mes, $year, $orderBy = 'fecha', $orderDir = 'DESC') {
     // Mapeo de campos permitidos para evitar inyección SQL
     $allowedColumns = [
@@ -160,7 +159,7 @@ public function obtenerHistorialCabezal($mes, $year, $orderBy = 'fecha', $orderD
     $this->db->bind(':year', $year);
     return $this->db->resultSet();
 }
-// --- NUEVO: Resumen Mensual (Agrupado por Cabezal y Producto) ---
+// --- Resumen Mensual (Agrupado por Cabezal y Producto) ---
 public function obtenerResumenMensual($mes, $year) {
     $sql = "SELECT 
                 p.nombre as nombre_cabezal,
@@ -232,7 +231,7 @@ public function obtenerResumenMensual($mes, $year) {
         return $registro;
     }
 
-// --- NUEVO: Reporte Nutricional de Temporada (Unidades / Ha) ---
+// --- Reporte Nutricional de Temporada (Unidades / Ha) ---
 public function obtenerReporteNutricionalTemporada($fechaInicio, $fechaFin) {
     /**
      * Lógica:

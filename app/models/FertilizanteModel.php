@@ -1,7 +1,7 @@
 <?php
 /**
  * Modelo para el Catálogo de Fertilizantes e Insumos
- * Arquitectura v3.1 (Flexible NPK + Extra)
+ * (Flexible NPK + Extra)
  */
 class FertilizanteModel {
     private $db;

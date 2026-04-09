@@ -2,7 +2,6 @@
 /**
  * Controlador Operativo de Fertirrigación
  * Maneja: Registro, Edición y Configuración
- * Arquitectura v3.7
  */
 class FertilizacionController extends Controller {
     
@@ -185,7 +184,7 @@ class FertilizacionController extends Controller {
         }
     }
 
-// --- ACTUALIZACIÓN: VISTA HISTORIAL ---
+// --- VISTA HISTORIAL ---
 public function historial() {
     $mes = $_GET['mes'] ?? date('m');
     $year = $_GET['year'] ?? date('Y');
@@ -214,7 +213,7 @@ public function historial() {
     $this->view('fertilizacion/historial', $data);
 }
 
-// --- NUEVO: REPORTE GERENCIAL (NPK / Ha) ---
+// --- REPORTE GERENCIAL (NPK / Ha) ---
 public function reporteNutricional() {
     // Definir Temporada: Si estamos en Nov 2025, la temporada empezó en Sep 2025.
     // Si estamos en Ene 2026, la temporada empezó en Sep 2025.
@@ -246,7 +245,7 @@ public function reporteNutricional() {
     $this->view('fertilizacion/reporte_nutricional', $data);
 }
 
-    // --- NUEVO: EXPORTACIÓN A EXCEL (CSV) ---
+    // --- EXPORTACIÓN A EXCEL (CSV) ---
     public function exportarExcelNutricional() {
         // Reutilizamos lógica de fechas
         $mesActual = date('n');
@@ -285,7 +284,7 @@ public function reporteNutricional() {
         exit(); // Detener ejecución para no imprimir HTML
     }
 
-    // --- NUEVO: GENERAR LINK COMPARTIBLE ---
+    // --- GENERAR LINK COMPARTIBLE ---
     public function generarLinkPublico() {
         // Solo Admins pueden compartir
         $this->protect(['Admin']);
@@ -306,7 +305,7 @@ public function reporteNutricional() {
         $this->respondJson(['success' => true, 'detalle' => $detalle]);
     }
 
-    // --- CONFIGURACIÓN Y OTROS (Sin cambios relevantes) ---
+    // --- CONFIGURACIÓN Y OTROS ---
     public function configuracion() {
         $this->protect(['Admin']);
         $predios = $this->predioModel->obtenerPuntosInyeccion();

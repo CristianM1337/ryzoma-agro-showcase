@@ -169,7 +169,7 @@
     </div>
 </div>
 
-<!-- Modal Compartir (Igual que antes) -->
+<!-- Modal Compartir -->
 <div class="modal fade" id="modalCompartir" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">

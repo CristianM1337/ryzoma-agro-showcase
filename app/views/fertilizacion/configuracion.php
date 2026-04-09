@@ -75,7 +75,6 @@
     </div>
 </div>
 
-<!-- ... (Los Modales se mantienen IGUALES) ... -->
 <div class="modal fade" id="modalCrearCabezal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -185,7 +184,7 @@
 const URL_BASE = '<?php echo URL_ROOT; ?>';
 let currentOrigenId = null;
 
-// --- NUEVA FUNCIÓN DE BORRADO ---
+// --- FUNCIÓN DE BORRADO ---
 function eliminarCabezalVirtual(id, nombre) {
     if (!confirm(`¿Está seguro de eliminar el cabezal "${nombre}"?\n\nSi fue usado en registros antiguos, solo se ocultará.`)) {
         return;
@@ -210,7 +209,7 @@ function eliminarCabezalVirtual(id, nombre) {
     });
 }
 
-// --- RESTO DE FUNCIONES (Crear, Configurar, Asistente) IGUALES QUE ANTES ---
+// --- Crear, Configurar, Asistente ---
 // Lógica Creación Cabezal
 document.getElementById('formCrearCabezal').addEventListener('submit', function(e) {
     e.preventDefault();

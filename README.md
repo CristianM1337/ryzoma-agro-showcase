@@ -22,7 +22,7 @@ El sistema implementa un patrón **MVC con Capa de Servicios**, manteniendo los 
 
 ## 🗄 Modelo de Datos
 
-El archivo [`schema_sanitized.sql`](./schema_sanitized.sql) contiene el schema focalizado en este módulo (12 tablas). El modelo completo del sistema incluye ~35 tablas adicionales de otros módulos.
+El archivo [`database/schema_sanitized.sql`](./database/schema_sanitized.sql) contiene el schema focalizado en este módulo (12 tablas). El modelo completo del sistema incluye ~35 tablas adicionales de otros módulos.
 
 ### Diagrama de relaciones clave
 
@@ -136,19 +136,20 @@ ryzoma-agro-showcase/
 │   ├── models/
 │   │   └── FertilizanteModel.php          # Consultas preparadas y abstracción DB
 │   └── views/
-│       └── fertilizacion/
-│           ├── configuracion.php
-│           ├── historial.php
-│           ├── registro.php
-│           └── reporte_nutricional.php
+│       ├── fertilizacion/
+│       │   ├── configuracion.php
+│       │   ├── historial.php
+│       │   ├── registro.php
+│       │   └── reporte_nutricional.php
+│       └── fertilizantes/
+│           ├── form.php
+│           └── index.php
 └── database/
     └── schema_sanitized.sql               # Schema focalizado (12 tablas, sanitizado)
-
-```
 
 El código fuente del sistema (controladores, modelos, vistas, servicios) se mantiene en repositorio privado. Este showcase expone la arquitectura, el modelo de datos y la lógica de negocio de forma ilustrativa.
 
 ***
 
-*Desarrollado por [Cristian Manzano Ayala](https://github.com/crismanzano) — Sistema en producción activa.*
+*Desarrollado por [Cristian Manzano Ayala](https://github.com/CristianM1337) — Sistema en producción activa.*
 
